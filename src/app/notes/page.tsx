@@ -66,7 +66,7 @@ export default function NotesPage() {
       setWordCount(words.length);
       setCharCount(editingNote.content.length);
     }
-  }, [editingNote?.content]);
+  }, [editingNote]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -151,7 +151,7 @@ export default function NotesPage() {
     }
   };
 
-  const createNewNote = () => {
+  const createNewNote = useCallback(() => {
     if (selectedListId) {
       const newNote: Note = {
         id: Date.now().toString(),
@@ -169,9 +169,9 @@ export default function NotesPage() {
       setSelectedNoteId(newNote.id);
       setEditingNote(newNote);
     }
-  };
+  }, [selectedListId, noteLists, setNoteLists]);
 
-  const saveNote = (noteId: string, title: string, content: string) => {
+  const saveNote = useCallback((noteId: string, title: string, content: string) => {
     if (selectedListId) {
       setNoteLists(noteLists.map(list => 
         list.id === selectedListId 
@@ -189,7 +189,7 @@ export default function NotesPage() {
       setEditingNote(null);
       setLastSaved(new Date());
     }
-  };
+  }, [selectedListId, noteLists, setNoteLists]);
 
   const deleteNote = (noteId: string) => {
     if (selectedListId) {
@@ -233,12 +233,12 @@ export default function NotesPage() {
     setIsMarkdownPreview(false);
   };
 
-  const cancelEditing = () => {
+  const cancelEditing = useCallback(() => {
     setEditingNote(null);
     if (autoSaveTimeout) {
       clearTimeout(autoSaveTimeout);
     }
-  };
+  }, [autoSaveTimeout]);
 
   const handleNoteContentChange = (content: string) => {
     if (editingNote) {
@@ -566,7 +566,7 @@ export default function NotesPage() {
 
                     {filteredNotes.length === 0 && searchQuery && (
                       <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-8">
-                        No notes found matching "{searchQuery}"
+                        No notes found matching &quot;{searchQuery}&quot;
                       </p>
                     )}
 
