@@ -16,6 +16,7 @@ export default function TodoPage() {
   const [completedTaskId, setCompletedTaskId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [animationPhase, setAnimationPhase] = useState<'initial' | 'expanding' | 'particles' | 'complete'>('initial');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Handle client-side initialization to prevent hydration mismatch
   useEffect(() => {
@@ -23,6 +24,49 @@ export default function TodoPage() {
       setSelectedListId(todoLists[0].id);
     }
   }, [todoLists, selectedListId]);
+
+  // Update current time every minute for relative timestamps
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format relative time
+  const formatRelativeTime = (date: Date) => {
+    const now = currentTime.getTime();
+    const then = new Date(date).getTime();
+    const diffInSeconds = Math.floor((now - then) / 1000);
+
+    if (diffInSeconds < 60) {
+      return 'just now';
+    }
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min${diffInMinutes === 1 ? '' : 's'} ago`;
+    }
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+    }
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) {
+      return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+    }
+
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInWeeks < 4) {
+      return `${diffInWeeks} week${diffInWeeks === 1 ? '' : 's'} ago`;
+    }
+
+    const diffInMonths = Math.floor(diffInDays / 30);
+    return `${diffInMonths} month${diffInMonths === 1 ? '' : 's'} ago`;
+  };
 
   const selectedList = todoLists.find(list => list.id === selectedListId);
 
@@ -561,17 +605,22 @@ export default function TodoPage() {
                         )}
                       </div>
                       
-                      <span
-                        className={`flex-1 transition-all duration-500 ${
-                          task.completed
-                            ? 'line-through text-purple-300'
-                            : 'text-white'
-                        } ${
-                          completedTaskId === task.id ? 'animate-pulse' : ''
-                        }`}
-                      >
-                        {task.text}
-                      </span>
+                      <div className="flex-1">
+                        <span
+                          className={`transition-all duration-500 ${
+                            task.completed
+                              ? 'line-through text-purple-300'
+                              : 'text-white'
+                          } ${
+                            completedTaskId === task.id ? 'animate-pulse' : ''
+                          }`}
+                        >
+                          {task.text}
+                        </span>
+                        <div className="text-xs text-purple-300 mt-1">
+                          {formatRelativeTime(task.updatedAt)}
+                        </div>
+                      </div>
                       
                       {/* Enhanced celebration effects for completed task */}
                       {completedTaskId === task.id && (

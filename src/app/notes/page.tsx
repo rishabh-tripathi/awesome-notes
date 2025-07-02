@@ -15,7 +15,6 @@ export default function NotesPage() {
   const [showNewListForm, setShowNewListForm] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isMarkdownPreview, setIsMarkdownPreview] = useState(false);
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -83,10 +82,7 @@ export default function NotesPage() {
             e.preventDefault();
             createNewNote();
             break;
-          case 'f':
-            e.preventDefault();
-            document.getElementById('search-input')?.focus();
-            break;
+
           case 'p':
             e.preventDefault();
             setIsMarkdownPreview(!isMarkdownPreview);
@@ -105,16 +101,7 @@ export default function NotesPage() {
   const selectedList = noteLists.find(list => list.id === selectedListId);
   const selectedNote = selectedList?.notes.find(note => note.id === selectedNoteId);
 
-  // Filter notes based on search query
-  const filteredNotes = useMemo(() => {
-    if (!selectedList) return [];
-    if (!searchQuery.trim()) return selectedList.notes;
-    
-    return selectedList.notes.filter(note =>
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [selectedList, searchQuery]);
+
 
   // Recently edited notes (last 5)
   const recentNotes = useMemo(() => {
@@ -248,13 +235,7 @@ export default function NotesPage() {
     }
   };
 
-  const handleNoteTitleChange = (title: string) => {
-    if (editingNote) {
-      const updatedNote = { ...editingNote, title };
-      setEditingNote(updatedNote);
-      autoSave(updatedNote.id, title, updatedNote.content);
-    }
-  };
+
 
   const handleImportData = (importedData: { todoLists?: TodoList[]; noteLists?: NoteList[] }) => {
     if (importedData.todoLists) {
@@ -313,7 +294,6 @@ export default function NotesPage() {
             <div className="hidden lg:flex items-center space-x-4 text-sm text-purple-200">
               <span>⌘+N New</span>
               <span>⌘+S Save</span>
-              <span>⌘+F Search</span>
               <span>⌘+P Preview</span>
             </div>
           </div>
@@ -348,7 +328,7 @@ export default function NotesPage() {
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-white">
-                    Note Collections
+                    Topics
                   </h2>
                   <button
                     onClick={() => setShowNewListForm(true)}
@@ -408,7 +388,6 @@ export default function NotesPage() {
                             setSelectedListId(list.id);
                             setSelectedNoteId(null);
                             setEditingNote(null);
-                            setSearchQuery('');
                           }}
                           className="flex-1"
                         >
@@ -467,7 +446,7 @@ export default function NotesPage() {
                         className="p-3 rounded-xl cursor-pointer bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
                       >
                         <p className="font-medium text-sm text-white truncate">
-                          {note.title}
+                          {note.content.slice(0, 50)}...
                         </p>
                         <p className="text-xs text-purple-200">
                           {note.listName}
@@ -498,25 +477,10 @@ export default function NotesPage() {
                     </button>
                   </div>
 
-                  {/* Search */}
-                  <div className="mb-6">
-                    <div className="relative">
-                      <input
-                        id="search-input"
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search notes... (⌘+F)"
-                        className="w-full p-3 pr-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      />
-                      <svg className="w-4 h-4 absolute right-3 top-3.5 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                  </div>
+
 
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {filteredNotes.map(note => (
+                    {selectedList.notes.map(note => (
                       <div
                         key={note.id}
                         className={`p-4 rounded-xl cursor-pointer transition-all duration-300 border ${
@@ -530,11 +494,8 @@ export default function NotesPage() {
                             onClick={() => setSelectedNoteId(note.id)}
                             className="flex-1 min-w-0"
                           >
-                            <h3 className="font-semibold text-white truncate mb-2">
-                              {note.title}
-                            </h3>
-                            <p className="text-sm text-purple-200 line-clamp-2 mb-2">
-                              {note.content.slice(0, 100)}...
+                            <p className="text-sm text-purple-200 line-clamp-3 mb-2">
+                              {note.content.slice(0, 150)}...
                             </p>
                             <p className="text-xs text-purple-300">
                               {mounted ? note.updatedAt.toLocaleDateString() : ''}
@@ -564,13 +525,7 @@ export default function NotesPage() {
                       </div>
                     ))}
 
-                    {filteredNotes.length === 0 && searchQuery && (
-                      <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-8">
-                        No notes found matching &quot;{searchQuery}&quot;
-                      </p>
-                    )}
-
-                    {selectedList.notes.length === 0 && !searchQuery && (
+                    {selectedList.notes.length === 0 && (
                       <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-8">
                         No notes yet. Create your first note!
                       </p>
@@ -585,13 +540,6 @@ export default function NotesPage() {
               {editingNote ? (
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
                   <div className="flex items-center justify-between mb-4">
-                    <input
-                      type="text"
-                      value={editingNote.title}
-                      onChange={(e) => handleNoteTitleChange(e.target.value)}
-                      className="text-2xl font-semibold bg-transparent border-none outline-none text-white placeholder-purple-200 flex-1"
-                      placeholder="Note title..."
-                    />
                     <div className="flex items-center space-x-2">
                       {/* Word count toggle */}
                       <button
@@ -678,9 +626,6 @@ You can use Markdown:
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h2 className="text-2xl font-semibold text-white mb-2">
-                        {selectedNote.title}
-                      </h2>
                       <p className="text-sm text-purple-200">
                         Updated: {mounted ? selectedNote.updatedAt.toLocaleString() : ''}
                       </p>
