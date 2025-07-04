@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Login from './Login';
+import InactivityBlur from './InactivityBlur';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -20,11 +21,6 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
 
   const handleLogin = () => {
     setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('research-app-authenticated');
-    setIsAuthenticated(false);
   };
 
   if (isLoading) {
@@ -49,18 +45,7 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
 
   return (
     <div className="relative">
-      {/* Logout Button - Fixed Position */}
-      <button
-        onClick={handleLogout}
-        className="fixed top-4 right-4 z-50 p-3 bg-white/10 backdrop-blur-sm text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all duration-300 flex items-center space-x-2 group"
-        title="Sign Out"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-        </svg>
-        <span className="hidden sm:block text-sm font-medium group-hover:text-purple-200">Sign Out</span>
-      </button>
-      
+      <InactivityBlur inactivityDelay={10000} />
       {children}
     </div>
   );

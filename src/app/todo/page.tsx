@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TodoList, TodoItem, NoteList } from '@/types';
+import { TodoList, TodoItem } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClientOnly from '@/components/ClientOnly';
-import DataImportExport from '@/components/DataImportExport';
+import Footer from '@/components/Footer';
 
 export default function TodoPage() {
   const [todoLists, setTodoLists] = useLocalStorage<TodoList[]>('todoLists', []);
-  const [noteLists, setNoteLists] = useLocalStorage<NoteList[]>('noteLists', []);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [newListName, setNewListName] = useState('');
   const [newTaskText, setNewTaskText] = useState('');
@@ -17,6 +16,9 @@ export default function TodoPage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [animationPhase, setAnimationPhase] = useState<'initial' | 'expanding' | 'particles' | 'complete'>('initial');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [streak, setStreak] = useState(0);
+  const [showAchievement, setShowAchievement] = useState(false);
+  const [achievementType, setAchievementType] = useState<'streak' | 'milestone' | 'perfect' | null>(null);
 
   // Handle client-side initialization to prevent hydration mismatch
   useEffect(() => {
@@ -113,6 +115,55 @@ export default function TodoPage() {
     }
   };
 
+  const playCompletionSound = () => {
+    // Create a simple success sound using Web Audio API
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    const audioContext = new AudioContextClass();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  };
+
+  const checkAchievements = (completedCount: number, totalCount: number) => {
+    // Streak achievement
+    const newStreak = streak + 1;
+    setStreak(newStreak);
+    
+    if (newStreak >= 5 && newStreak % 5 === 0) {
+      setAchievementType('streak');
+      setShowAchievement(true);
+      setTimeout(() => setShowAchievement(false), 3000);
+    }
+    
+    // Milestone achievements
+    if (completedCount === 10 || completedCount === 25 || completedCount === 50 || completedCount === 100) {
+      setAchievementType('milestone');
+      setShowAchievement(true);
+      setTimeout(() => setShowAchievement(false), 3000);
+    }
+    
+    // Perfect completion
+    if (completedCount === totalCount && totalCount >= 5) {
+      setAchievementType('perfect');
+      setShowAchievement(true);
+      setTimeout(() => setShowAchievement(false), 3000);
+    }
+  };
+
   const toggleTask = (taskId: string) => {
     if (selectedListId) {
       const currentTask = todoLists
@@ -125,17 +176,34 @@ export default function TodoPage() {
         setShowCelebration(true);
         setAnimationPhase('initial');
         
-        // Animation sequence
-        setTimeout(() => setAnimationPhase('expanding'), 100);
-        setTimeout(() => setAnimationPhase('particles'), 300);
-        setTimeout(() => setAnimationPhase('complete'), 2000);
+                 // Play completion sound
+         try {
+           playCompletionSound();
+         } catch {
+           console.log('Audio not supported');
+         }
+        
+        // Enhanced animation sequence with better timing
+        setTimeout(() => setAnimationPhase('expanding'), 50);
+        setTimeout(() => setAnimationPhase('particles'), 200);
+        setTimeout(() => setAnimationPhase('complete'), 1500);
         
         // Hide celebration after animation
         setTimeout(() => {
           setShowCelebration(false);
           setCompletedTaskId(null);
           setAnimationPhase('initial');
-        }, 4000);
+        }, 3500);
+        
+        // Check for achievements
+        const list = todoLists.find(l => l.id === selectedListId);
+        if (list) {
+          const newCompletedCount = list.items.filter(item => item.completed).length + 1;
+          checkAchievements(newCompletedCount, list.items.length);
+        }
+      } else if (currentTask && currentTask.completed) {
+        // Reset streak when uncompleting a task
+        setStreak(0);
       }
       
       setTodoLists(todoLists.map(list => 
@@ -168,16 +236,7 @@ export default function TodoPage() {
     }
   };
 
-  const handleImportData = (importedData: { todoLists?: TodoList[]; noteLists?: NoteList[] }) => {
-    if (importedData.todoLists) {
-      setTodoLists(importedData.todoLists);
-      // Reset selection when importing new data
-      setSelectedListId(null);
-    }
-    if (importedData.noteLists) {
-      setNoteLists(importedData.noteLists);
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -207,25 +266,33 @@ export default function TodoPage() {
               } bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-full`}></div>
             </div>
 
-            {/* Enhanced confetti particles */}
+            {/* Enhanced confetti particles with physics */}
             <div className="absolute inset-0 overflow-hidden">
-              {[...Array(50)].map((_, i) => {
-                const colors = ['bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400', 'bg-pink-400', 'bg-indigo-400'];
-                const shapes = ['rounded-full', 'rounded-sm', 'rotate-45'];
-                const sizes = ['w-2 h-2', 'w-3 h-3', 'w-4 h-4'];
+              {[...Array(60)].map((_, i) => {
+                const colors = ['bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400', 'bg-pink-400', 'bg-indigo-400', 'bg-emerald-400', 'bg-cyan-400'];
+                const shapes = ['rounded-full', 'rounded-sm', 'rotate-45', 'rotate-12', 'rounded-lg'];
+                const sizes = ['w-1 h-1', 'w-2 h-2', 'w-3 h-3', 'w-4 h-4', 'w-1 h-4', 'w-4 h-1'];
+                
+                const startX = 50 + (Math.random() - 0.5) * 20; // Start near center
+                const startY = 50 + (Math.random() - 0.5) * 20;
+                const endX = Math.random() * 100;
+                const endY = Math.random() * 100;
+                const duration = 0.8 + Math.random() * 1.2;
+                const delay = Math.random() * 0.8;
                 
                 return (
                   <div
                     key={i}
                     className={`absolute ${colors[i % colors.length]} ${shapes[i % shapes.length]} ${sizes[i % sizes.length]} 
-                      ${animationPhase === 'particles' ? 'animate-ping opacity-90' : 'opacity-0'} 
-                      transition-opacity duration-500`}
+                      ${animationPhase === 'particles' ? 'opacity-90' : 'opacity-0'} 
+                      transition-all duration-300 shadow-lg`}
                     style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
-                      animationDelay: `${Math.random() * 1.5}s`,
-                      animationDuration: `${0.8 + Math.random() * 0.7}s`,
-                      transform: `rotate(${Math.random() * 360}deg) scale(${0.5 + Math.random() * 0.8})`
+                      left: `${animationPhase === 'particles' ? endX : startX}%`,
+                      top: `${animationPhase === 'particles' ? endY : startY}%`,
+                      transform: `rotate(${Math.random() * 720}deg) scale(${animationPhase === 'particles' ? 0.2 : 1})`,
+                      transition: `all ${duration}s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${delay}s`,
+                      filter: 'drop-shadow(0 0 8px currentColor)',
+                      zIndex: 60
                     }}
                   />
                 );
@@ -321,6 +388,46 @@ export default function TodoPage() {
             </div>
           </div>
         )}
+
+        {/* Achievement Notification */}
+        {showAchievement && (
+          <div className="fixed top-20 right-4 z-50 transform transition-all duration-500 ease-out animate-bounce">
+            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-xl shadow-2xl border border-yellow-400/50 max-w-sm">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center animate-spin">
+                  {achievementType === 'streak' && (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  )}
+                  {achievementType === 'milestone' && (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                  )}
+                  {achievementType === 'perfect' && (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <div className="font-bold text-lg">
+                    {achievementType === 'streak' && `🔥 ${streak} Task Streak!`}
+                    {achievementType === 'milestone' && '🎯 Milestone Reached!'}
+                    {achievementType === 'perfect' && '⭐ Perfect Completion!'}
+                  </div>
+                  <div className="text-sm opacity-90">
+                    {achievementType === 'streak' && 'You\'re on fire! Keep going!'}
+                    {achievementType === 'milestone' && 'Amazing productivity milestone!'}
+                    {achievementType === 'perfect' && 'All tasks completed! Outstanding!'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-3">
@@ -742,27 +849,12 @@ export default function TodoPage() {
           </div>
         </div>
         
-        {/* Footer with Data Import/Export */}
-        <div className="mt-16">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-            <div className="flex items-center text-purple-200 text-sm">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-              Task data stored locally in your browser
-            </div>
-            
-            {/* Data Import/Export Button */}
-            <DataImportExport
-              todoLists={todoLists}
-              noteLists={noteLists}
-              onImportData={handleImportData}
-              className="z-10"
-            />
-          </div>
-        </div>
+
         </ClientOnly>
+        
+        <div className="pb-20"></div>
       </div>
+      <Footer />
     </div>
   );
 } 

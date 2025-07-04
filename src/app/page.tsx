@@ -1,28 +1,21 @@
 'use client';
 
 import Link from "next/link";
-import DataImportExport from '@/components/DataImportExport';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { TodoList, NoteList } from '@/types';
 import { useState, useEffect } from 'react';
+import Footer from '@/components/Footer';
 
 export default function Home() {
-  const [todoLists, setTodoLists] = useLocalStorage<TodoList[]>('todoLists', []);
-  const [noteLists, setNoteLists] = useLocalStorage<NoteList[]>('noteLists', []);
+  const [todoLists] = useLocalStorage<TodoList[]>('todoLists', []);
+  const [noteLists] = useLocalStorage<NoteList[]>('noteLists', []);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleImportData = (importedData: { todoLists?: TodoList[]; noteLists?: NoteList[] }) => {
-    if (importedData.todoLists) {
-      setTodoLists(importedData.todoLists);
-    }
-    if (importedData.noteLists) {
-      setNoteLists(importedData.noteLists);
-    }
-  };
+
 
   if (!mounted) {
     return (
@@ -83,12 +76,7 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="text-center mb-20">
-          <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-purple-200 text-sm mb-6 border border-white/20">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Supercharge Your Productivity
-          </div>
+          
           
           <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight">
             Organize Your
@@ -338,26 +326,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-16">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-            <div className="flex items-center text-purple-200 text-sm">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              All data stored securely in your browser
-            </div>
-            
-            {/* Data Import/Export Button */}
-            <DataImportExport
-              todoLists={todoLists}
-              noteLists={noteLists}
-              onImportData={handleImportData}
-              className="z-10"
-            />
-          </div>
-        </div>
+        <div className="pb-20"></div>
       </div>
+      <Footer />
     </div>
   );
 }
