@@ -151,10 +151,10 @@ export default function NotesPage() {
     setRenameValue('');
   };
 
-  const cancelRenaming = () => {
+  const cancelRenaming = useCallback(() => {
     setRenamingTabId(null);
     setRenameValue('');
-  };
+  }, []);
 
   const createNewNote = useCallback(() => {
     if (selectedListId) {
@@ -399,7 +399,7 @@ export default function NotesPage() {
         }>
           <div className="space-y-6">
             {/* Topics Tabs */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 sticky top-0 z-40">
               {showNewListForm && (
                 <div className="p-3 border-b border-white/10">
                   <input

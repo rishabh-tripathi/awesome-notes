@@ -117,7 +117,7 @@ export default function TodoPage() {
 
   const playCompletionSound = () => {
     // Create a simple success sound using Web Audio API
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
     
     const audioContext = new AudioContextClass();

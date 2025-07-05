@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface InactivityBlurProps {
   inactivityDelay?: number; // in milliseconds
@@ -16,7 +16,7 @@ export default function InactivityBlur({ inactivityDelay = 30000 }: InactivityBl
   const [isShaking, setIsShaking] = useState(false);
   const correctPasscode = '2321';
 
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     // Don't reset timer if screen is currently blurred
     if (isInactive) {
       return;
@@ -44,7 +44,7 @@ export default function InactivityBlur({ inactivityDelay = 30000 }: InactivityBl
       setIsInactive(true);
       setShowWarning(false);
     }, inactivityDelay);
-  };
+  }, [inactivityDelay, isInactive]);
 
   useEffect(() => {
     // Only set up event listeners when screen is not locked
@@ -83,7 +83,7 @@ export default function InactivityBlur({ inactivityDelay = 30000 }: InactivityBl
         clearTimeout(warningTimeoutRef.current);
       }
     };
-  }, [inactivityDelay, isInactive]);
+  }, [inactivityDelay, isInactive, resetTimer]);
 
 
 
