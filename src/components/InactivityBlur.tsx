@@ -6,11 +6,15 @@ interface InactivityBlurProps {
   inactivityDelay?: number; // in milliseconds
 }
 
-export default function InactivityBlur({ inactivityDelay = 10000 }: InactivityBlurProps) {
+export default function InactivityBlur({ inactivityDelay = 30000 }: InactivityBlurProps) {
   const [isInactive, setIsInactive] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [passcode, setPasscode] = useState('');
+  const [error, setError] = useState('');
+  const [isShaking, setIsShaking] = useState(false);
+  const correctPasscode = '2321';
 
   const resetTimer = () => {
     // Don't reset timer if screen is currently blurred
@@ -43,6 +47,11 @@ export default function InactivityBlur({ inactivityDelay = 10000 }: InactivityBl
   };
 
   useEffect(() => {
+    // Only set up event listeners when screen is not locked
+    if (isInactive) {
+      return;
+    }
+
     // Events to track for user activity
     const events = [
       'mousedown',
@@ -74,31 +83,61 @@ export default function InactivityBlur({ inactivityDelay = 10000 }: InactivityBl
         clearTimeout(warningTimeoutRef.current);
       }
     };
-  }, [inactivityDelay]);
+  }, [inactivityDelay, isInactive]);
 
-  const handleReactivate = () => {
-    // Clear existing timers
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
+
+
+  const handlePasscodeChange = (value: string) => {
+    // Only allow numbers and limit to 4 digits
+    const numericValue = value.replace(/\D/g, '').slice(0, 4);
+    setPasscode(numericValue);
+    
+    // Auto-submit when 4 digits are entered
+    if (numericValue.length === 4) {
+      setTimeout(() => {
+        handlePasscodeSubmitWithValue(numericValue);
+      }, 100);
     }
-    if (warningTimeoutRef.current) {
-      clearTimeout(warningTimeoutRef.current);
-    }
+  };
 
-    // Reset states
-    setIsInactive(false);
-    setShowWarning(false);
-
-    // Show warning at 7 seconds (3 seconds before blur)
-    warningTimeoutRef.current = setTimeout(() => {
-      setShowWarning(true);
-    }, inactivityDelay - 3000);
-
-    // Set inactive after delay
-    timeoutRef.current = setTimeout(() => {
-      setIsInactive(true);
+  const handlePasscodeSubmitWithValue = (codeToCheck: string) => {
+    if (codeToCheck === correctPasscode) {
+      // Correct passcode - unlock screen
+      setIsInactive(false);
       setShowWarning(false);
-    }, inactivityDelay);
+      setPasscode('');
+      setError('');
+      
+      // Restart the timer
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+
+      // Show warning at 7 seconds (3 seconds before blur)
+      warningTimeoutRef.current = setTimeout(() => {
+        setShowWarning(true);
+      }, inactivityDelay - 3000);
+
+      // Set inactive after delay
+      timeoutRef.current = setTimeout(() => {
+        setIsInactive(true);
+        setShowWarning(false);
+      }, inactivityDelay);
+    } else {
+      // Incorrect passcode
+      setError(`Incorrect passcode`); 
+      setIsShaking(true);
+      setPasscode('');
+      
+      // Stop shaking after animation
+      setTimeout(() => {
+        setIsShaking(false);
+        setError('');
+      }, 1000);
+    }
   };
 
   return (
@@ -118,7 +157,7 @@ export default function InactivityBlur({ inactivityDelay = 10000 }: InactivityBl
       {/* Blur Overlay */}
       {isInactive && (
         <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-md flex items-center justify-center">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 text-center max-w-md mx-4">
+          <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 text-center max-w-md mx-4 transition-all duration-300 ${isShaking ? 'animate-bounce' : ''}`}>
             <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-purple-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -129,14 +168,73 @@ export default function InactivityBlur({ inactivityDelay = 10000 }: InactivityBl
               Your screen has been blurred due to inactivity for security purposes.
             </p>
             <p className="text-sm text-purple-300 mb-6">
-              Click the button below to unlock and continue working.
+              Enter the 4-digit passcode to unlock and continue working.
             </p>
-            <button
-              onClick={handleReactivate}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 font-medium"
-            >
-              Unlock Screen
-            </button>
+            
+            {/* Passcode Input */}
+            <div className="mb-4">
+              <div className="flex justify-center space-x-2 mb-3">
+                {[0, 1, 2, 3].map((index) => (
+                  <div
+                    key={index}
+                    className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center text-xl font-bold text-white transition-all duration-200 ${
+                      passcode.length > index 
+                        ? 'border-purple-400 bg-purple-500/20' 
+                        : 'border-white/30 bg-white/10'
+                    }`}
+                  >
+                    {passcode.length > index ? '●' : ''}
+                  </div>
+                ))}
+              </div>
+              
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={passcode}
+                onChange={(e) => handlePasscodeChange(e.target.value)}
+                className="sr-only"
+                autoFocus
+                placeholder="Enter 4-digit passcode"
+              />
+              
+              {/* Virtual Keypad */}
+              <div className="grid grid-cols-3 gap-2 max-w-48 mx-auto">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map((num, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      if (num === '⌫') {
+                        setPasscode(prev => prev.slice(0, -1));
+                      } else if (num !== '' && passcode.length < 4) {
+                        const newPasscode = passcode + num;
+                        handlePasscodeChange(newPasscode);
+                      }
+                    }}
+                    disabled={num === ''}
+                    className={`h-12 rounded-lg font-semibold transition-all duration-200 ${
+                      num === '' 
+                        ? 'invisible' 
+                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 active:scale-95'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                <p className="text-red-300 text-sm font-medium">{error}</p>
+              </div>
+            )}
+            
+            <p className="text-xs text-purple-400 mt-4">
+              Enter passcode or use the keypad above
+            </p>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { NoteList, Note } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClientOnly from '@/components/ClientOnly';
@@ -20,6 +20,9 @@ export default function NotesPage() {
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [showWordCount, setShowWordCount] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Handle client-side initialization to prevent hydration mismatch
   useEffect(() => {
@@ -66,36 +69,17 @@ export default function NotesPage() {
     }
   }, [editingNote]);
 
-  // Keyboard shortcuts
+  // Auto-focus textarea when editing a new note
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) {
-        switch (e.key) {
-          case 's':
-            e.preventDefault();
-            if (editingNote) {
-              saveNote(editingNote.id, editingNote.title, editingNote.content);
-            }
-            break;
-          case 'n':
-            e.preventDefault();
-            createNewNote();
-            break;
-
-          case 'p':
-            e.preventDefault();
-            setIsMarkdownPreview(!isMarkdownPreview);
-            break;
-        }
-      }
-      if (e.key === 'Escape' && editingNote) {
-        cancelEditing();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (editingNote && !isMarkdownPreview && textareaRef.current) {
+      // Focus the textarea when a new note is created or when switching from preview to edit mode
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
   }, [editingNote, isMarkdownPreview]);
+
+
 
   const selectedList = noteLists.find(list => list.id === selectedListId);
   const selectedNote = selectedList?.notes.find(note => note.id === selectedNoteId);
@@ -234,6 +218,61 @@ export default function NotesPage() {
     }
   };
 
+  // Filter notes based on search query
+  const filteredNotes = useMemo(() => {
+    if (!selectedList || !searchQuery.trim()) {
+      return selectedList?.notes || [];
+    }
+    return selectedList.notes.filter(note =>
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [selectedList, searchQuery]);
+
+  // Keyboard shortcuts - placed after function definitions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key) {
+          case 's':
+            e.preventDefault();
+            if (editingNote) {
+              saveNote(editingNote.id, editingNote.title, editingNote.content);
+            }
+            break;
+          case 'n':
+            e.preventDefault();
+            createNewNote();
+            break;
+          case 'f':
+            e.preventDefault();
+            setShowSearch(true);
+            // Focus search input after state update
+            setTimeout(() => {
+              const searchInput = document.getElementById('search-input');
+              if (searchInput) searchInput.focus();
+            }, 100);
+            break;
+          case 'p':
+            e.preventDefault();
+            setIsMarkdownPreview(!isMarkdownPreview);
+            break;
+        }
+      }
+      if (e.key === 'Escape') {
+        if (showSearch) {
+          setShowSearch(false);
+          setSearchQuery('');
+        } else if (editingNote) {
+          cancelEditing();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingNote, isMarkdownPreview, showSearch, saveNote, createNewNote, cancelEditing]);
+
 
 
 
@@ -282,6 +321,7 @@ export default function NotesPage() {
             <div className="hidden lg:flex items-center space-x-4 text-sm text-purple-200">
               <span>⌘+N New</span>
               <span>⌘+S Save</span>
+              <span>⌘+F Search</span>
               <span>⌘+P Preview</span>
             </div>
           </div>
@@ -454,21 +494,57 @@ export default function NotesPage() {
                     <h2 className="text-lg font-semibold text-white">
                       {selectedList.name}
                     </h2>
-                    <button
-                      onClick={createNewNote}
-                      className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-2 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
-                      title="Create new note (⌘+N)"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setShowSearch(!showSearch)}
+                        className="bg-white/10 backdrop-blur-sm text-white p-2 rounded-xl hover:bg-white/20 border border-white/20 transition-all duration-300"
+                        title="Search notes (⌘+F)"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={createNewNote}
+                        className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-2 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                        title="Create new note (⌘+N)"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Search Bar */}
+                  {showSearch && (
+                    <div className="mb-4">
+                      <input
+                        id="search-input"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search notes..."
+                        className="w-full p-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setShowSearch(false);
+                            setSearchQuery('');
+                          }
+                        }}
+                      />
+                      {searchQuery && (
+                        <p className="text-xs text-purple-300 mt-2">
+                          {filteredNotes.length} notes found
+                        </p>
+                      )}
+                    </div>
+                  )}
 
 
 
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {selectedList.notes.map(note => (
+                    {filteredNotes.map(note => (
                       <div
                         key={note.id}
                         className={`p-4 rounded-xl cursor-pointer transition-all duration-300 border ${
@@ -513,9 +589,14 @@ export default function NotesPage() {
                       </div>
                     ))}
 
-                    {selectedList.notes.length === 0 && (
+                    {filteredNotes.length === 0 && selectedList.notes.length === 0 && (
                       <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-8">
                         No notes yet. Create your first note!
+                      </p>
+                    )}
+                    {filteredNotes.length === 0 && selectedList.notes.length > 0 && searchQuery && (
+                      <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-8">
+                        No notes found matching &quot;{searchQuery}&quot;
                       </p>
                     )}
                   </div>
@@ -595,6 +676,7 @@ export default function NotesPage() {
                     />
                   ) : (
                     <textarea
+                      ref={textareaRef}
                       value={editingNote.content}
                       onChange={(e) => handleNoteContentChange(e.target.value)}
                       className="w-full h-96 p-4 border rounded-lg resize-none bg-white/5 backdrop-blur-sm border-white/20 text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"

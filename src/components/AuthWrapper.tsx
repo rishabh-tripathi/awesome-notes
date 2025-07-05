@@ -45,7 +45,7 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
 
   return (
     <div className="relative">
-      <InactivityBlur inactivityDelay={10000} />
+      <InactivityBlur inactivityDelay={30000} />
       {children}
     </div>
   );
