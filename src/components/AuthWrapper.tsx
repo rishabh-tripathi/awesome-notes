@@ -1,29 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Login from './Login';
 import InactivityBlur from './InactivityBlur';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
 }
 
 export default function AuthWrapper({ children }: AuthWrapperProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    // Check if user is already authenticated
-    const authStatus = localStorage.getItem('research-app-authenticated');
-    setIsAuthenticated(authStatus === 'true');
-    setIsLoading(false);
-  }, []);
-
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
@@ -39,8 +27,8 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+  if (!user) {
+    return <Login />;
   }
 
   return (

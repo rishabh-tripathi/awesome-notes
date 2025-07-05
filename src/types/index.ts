@@ -1,9 +1,17 @@
+import { User } from '@supabase/supabase-js';
+
+export type AuthUser = User;
+
 export interface TodoItem {
   id: string;
   text: string;
   completed: boolean;
   createdAt: Date;
   updatedAt: Date;
+  isRecurring?: boolean;
+  recurringFrequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  nextDueDate?: Date;
+  originalCreatedAt?: Date; // Keep track of when the recurring task was first created
 }
 
 export interface TodoList {
@@ -28,4 +36,8 @@ export interface NoteList {
   notes: Note[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AppSettings {
+  inactivityPasscode: string;
 } 

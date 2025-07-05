@@ -1,13 +1,16 @@
 'use client';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 interface LogoutButtonProps {
   className?: string;
 }
 
 export default function LogoutButton({ className = "" }: LogoutButtonProps) {
-  const handleLogout = () => {
-    localStorage.removeItem('research-app-authenticated');
-    window.location.reload(); // Force page reload to trigger auth check
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
   };
 
   return (

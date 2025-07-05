@@ -2,30 +2,39 @@
 
 import Link from 'next/link';
 import { useState, useRef } from 'react';
-import { TodoList, NoteList } from '@/types';
+import { TodoList, NoteList, AppSettings } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAuth } from '@/contexts/AuthContext';
+import Settings from './Settings';
 
 interface ExportData {
   todoLists: TodoList[];
   noteLists: NoteList[];
+  settings: AppSettings;
   exportDate: string;
   version: string;
 }
 
 export default function Footer() {
+  const { signOut } = useAuth();
   const [todoLists, setTodoLists] = useLocalStorage<TodoList[]>('todoLists', []);
   const [noteLists, setNoteLists] = useLocalStorage<NoteList[]>('noteLists', []);
+  const [inactivityPasscode] = useLocalStorage<string>('inactivityPasscode', '1234');
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImportData = (importedData: { todoLists?: TodoList[]; noteLists?: NoteList[] }) => {
+  const handleImportData = (importedData: { todoLists?: TodoList[]; noteLists?: NoteList[]; settings?: AppSettings }) => {
     if (importedData.todoLists) {
       setTodoLists(importedData.todoLists);
     }
     if (importedData.noteLists) {
       setNoteLists(importedData.noteLists);
+    }
+    if (importedData.settings?.inactivityPasscode) {
+      localStorage.setItem('inactivityPasscode', importedData.settings.inactivityPasscode);
     }
   };
 
@@ -33,6 +42,9 @@ export default function Footer() {
     const exportData: ExportData = {
       todoLists,
       noteLists,
+      settings: {
+        inactivityPasscode
+      },
       exportDate: new Date().toISOString(),
       version: '1.0'
     };
@@ -57,6 +69,9 @@ export default function Footer() {
   const downloadTodoData = () => {
     const exportData = {
       todoLists,
+      settings: {
+        inactivityPasscode
+      },
       exportDate: new Date().toISOString(),
       version: '1.0',
       type: 'todos'
@@ -82,6 +97,9 @@ export default function Footer() {
   const downloadNotesData = () => {
     const exportData = {
       noteLists,
+      settings: {
+        inactivityPasscode
+      },
       exportDate: new Date().toISOString(),
       version: '1.0',
       type: 'notes'
@@ -145,7 +163,7 @@ export default function Footer() {
           return obj;
         };
 
-        const importData: { todoLists?: TodoList[]; noteLists?: NoteList[] } = {};
+        const importData: { todoLists?: TodoList[]; noteLists?: NoteList[]; settings?: AppSettings } = {};
 
         if (jsonData.todoLists && Array.isArray(jsonData.todoLists)) {
           importData.todoLists = convertDates(jsonData.todoLists) as TodoList[];
@@ -153,6 +171,10 @@ export default function Footer() {
         
         if (jsonData.noteLists && Array.isArray(jsonData.noteLists)) {
           importData.noteLists = convertDates(jsonData.noteLists) as NoteList[];
+        }
+
+        if (jsonData.settings && typeof jsonData.settings === 'object') {
+          importData.settings = jsonData.settings as AppSettings;
         }
 
         if (jsonData.type === 'todos' && jsonData.todoLists) {
@@ -163,18 +185,18 @@ export default function Footer() {
           importData.noteLists = convertDates(jsonData.noteLists) as NoteList[];
         }
 
-        if (!importData.todoLists && !importData.noteLists) {
+        if (!importData.todoLists && !importData.noteLists && !importData.settings) {
           throw new Error('No valid data found in the import file');
         }
 
         handleImportData(importData);
-        setImportStatus(`Successfully imported ${
-          importData.todoLists ? `${importData.todoLists.length} todo lists` : ''
-        }${
-          importData.todoLists && importData.noteLists ? ' and ' : ''
-        }${
-          importData.noteLists ? `${importData.noteLists.length} note lists` : ''
-        }!`);
+        
+        const importedItems = [];
+        if (importData.todoLists) importedItems.push(`${importData.todoLists.length} todo lists`);
+        if (importData.noteLists) importedItems.push(`${importData.noteLists.length} note lists`);
+        if (importData.settings) importedItems.push('app settings');
+        
+        setImportStatus(`Successfully imported ${importedItems.join(', ')}!`);
         
         setTimeout(() => setImportStatus(null), 5000);
       } catch (error) {
@@ -203,9 +225,8 @@ export default function Footer() {
     setShowDropdown(false);
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('research-app-authenticated');
-    window.location.reload(); // Force page reload to trigger auth check
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -364,6 +385,19 @@ export default function Footer() {
                 )}
               </div>
               
+              {/* Settings Button */}
+              <button
+                onClick={() => setShowSettings(true)}
+                className="flex items-center space-x-1 text-xs text-purple-300 hover:text-white transition-colors duration-200"
+                title="Settings"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Settings</span>
+              </button>
+
               {/* Sign Out Button */}
               <button
                 onClick={handleSignOut}
@@ -379,6 +413,12 @@ export default function Footer() {
           </div>
         </div>
       </footer>
+      
+      {/* Settings Modal */}
+      <Settings 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </>
   );
 } 

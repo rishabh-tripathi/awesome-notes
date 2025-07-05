@@ -2,29 +2,44 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import SignUp from './SignUp';
 
-export default function Login() {
-  const { signIn } = useAuth();
+interface SignUpProps {
+  onSwitchToSignIn: () => void;
+}
+
+export default function SignUp({ onSwitchToSignIn }: SignUpProps) {
+  const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
-
-  if (showSignUp) {
-    return <SignUp onSwitchToSignIn={() => setShowSignUp(false)} />;
-  }
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setMessage('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await signUp(email, password);
       if (error) {
         setError(error.message);
+      } else {
+        setMessage('Please check your email for the confirmation link!');
       }
     } catch {
       setError('An unexpected error occurred');
@@ -44,20 +59,20 @@ export default function Login() {
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
 
       <div className="relative w-full max-w-md">
-        {/* Login Card */}
+        {/* Sign Up Card */}
         <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-purple-200">Sign in to access your Research Hub</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
+            <p className="text-purple-200">Join your personal Research Hub</p>
           </div>
 
-          {/* Login Form */}
+          {/* Sign Up Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-purple-200 mb-2">
@@ -103,12 +118,43 @@ export default function Login() {
               </div>
             </div>
 
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-purple-200 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+                  placeholder="Confirm your password"
+                  required
+                />
+              </div>
+            </div>
+
             {error && (
               <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 flex items-center space-x-2">
                 <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <span className="text-red-300 text-sm">{error}</span>
+              </div>
+            )}
+
+            {message && (
+              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-3 flex items-center space-x-2">
+                <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-green-300 text-sm">{message}</span>
               </div>
             )}
 
@@ -122,38 +168,37 @@ export default function Login() {
                   <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span>Signing In...</span>
+                  <span>Creating Account...</span>
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
-                  <span>Sign In</span>
+                  <span>Create Account</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Switch to Sign Up */}
+          {/* Switch to Sign In */}
           <div className="text-center mt-6">
             <p className="text-purple-200 text-sm">
-              Don&apos;t have an account?{' '}
+              Already have an account?{' '}
               <button
-                onClick={() => setShowSignUp(true)}
+                onClick={onSwitchToSignIn}
                 className="text-purple-300 hover:text-white font-semibold transition-colors duration-300"
               >
-                Sign Up
+                Sign In
               </button>
             </p>
           </div>
-
         </div>
 
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-purple-300 text-sm">
-            Secure access to your personal productivity workspace
+            Create your secure personal workspace
           </p>
         </div>
       </div>

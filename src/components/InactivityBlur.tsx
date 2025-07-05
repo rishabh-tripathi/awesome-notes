@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface InactivityBlurProps {
   inactivityDelay?: number; // in milliseconds
@@ -14,7 +15,7 @@ export default function InactivityBlur({ inactivityDelay = 30000 }: InactivityBl
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
-  const correctPasscode = '2321';
+  const [correctPasscode] = useLocalStorage<string>('inactivityPasscode', '1234');
 
   const resetTimer = useCallback(() => {
     // Don't reset timer if screen is currently blurred
