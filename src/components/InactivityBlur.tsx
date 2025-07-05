@@ -156,7 +156,7 @@ export default function InactivityBlur({ inactivityDelay = 30000 }: InactivityBl
 
       {/* Blur Overlay */}
       {isInactive && (
-        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-md flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-md flex items-center justify-center" data-inactivity-screen>
           <div className={`bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 text-center max-w-md mx-4 transition-all duration-300 ${isShaking ? 'animate-bounce' : ''}`}>
             <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-purple-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
