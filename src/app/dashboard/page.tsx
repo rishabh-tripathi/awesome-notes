@@ -82,7 +82,7 @@ export default function DashboardPage() {
           </h1>
           
           <p className="text-xl text-purple-200 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Welcome back! Here's your productivity overview and quick access to your workspace.
+            Welcome back! Here&apos;s your productivity overview and quick access to your workspace.
           </p>
 
           {/* CTA Buttons */}

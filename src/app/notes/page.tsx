@@ -542,7 +542,7 @@ export default function NotesPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingNote, showSearch, saveNote, createNewNote, cancelEditing, noteLists, setSelectedListId, setSelectedNoteId, setEditingNote, renamingTabId, cancelRenaming]);
+  }, [editingNote, showSearch, saveNote, createNewNote, cancelEditing, noteLists, setSelectedListId, setSelectedNoteId, setEditingNote, renamingTabId, cancelRenaming, openNotePiP]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
