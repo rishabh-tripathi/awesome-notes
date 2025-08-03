@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Research Hub - Productivity Dashboard",
+  title: "Algolint Hub",
   description: "Organize your digital life with smart task management and advanced note-taking features",
 };
 

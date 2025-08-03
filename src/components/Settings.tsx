@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { NoteList } from '@/types';
+import LocalFileSyncControl from './LocalFileSyncControl';
 
 interface SettingsProps {
   isOpen: boolean;
   onClose: () => void;
+  noteLists: NoteList[];
 }
 
-export default function Settings({ isOpen, onClose }: SettingsProps) {
+export default function Settings({ isOpen, onClose, noteLists }: SettingsProps) {
   const [inactivityPasscode, setInactivityPasscode] = useLocalStorage<string>('inactivityPasscode', '1234');
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
@@ -59,7 +62,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 max-w-md w-full mx-4">
+      <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Settings</h2>
@@ -163,6 +166,11 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
             </button>
           </div>
         </form>
+
+        {/* Local File Sync Section */}
+        <div className="mt-8">
+          <LocalFileSyncControl noteLists={noteLists} />
+        </div>
 
         {/* Security Notice */}
         <div className="mt-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-xl">

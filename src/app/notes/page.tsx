@@ -1,11 +1,26 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+
+// Type for Document Picture-in-Picture API
+declare global {
+  interface Window {
+    documentPictureInPicture?: {
+      requestWindow: (options?: {
+        width?: number;
+        height?: number;
+        disallowReturnToOpener?: boolean;
+      }) => Promise<Window>;
+    };
+  }
+}
 import { NoteList, Note } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClientOnly from '@/components/ClientOnly';
 import Footer from '@/components/Footer';
 import DeleteTopicSection from '@/components/DeleteTopicSection';
+import NotePiPModal from '@/components/NotePiPModal';
+
 
 export default function NotesPage() {
   const [noteLists, setNoteLists] = useLocalStorage<NoteList[]>('noteLists', []);
@@ -26,6 +41,8 @@ export default function NotesPage() {
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [dragStarted, setDragStarted] = useState(false);
+  const [pipNote, setPipNote] = useState<Note | null>(null);
+  const [pipMode, setPipMode] = useState<'read' | 'edit'>('read');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Handle client-side initialization to prevent hydration mismatch
@@ -252,6 +269,195 @@ export default function NotesPage() {
     }
   };
 
+
+
+  const closePiP = useCallback(() => {
+    setPipNote(null);
+  }, []);
+
+  const handlePiPContentChange = useCallback((noteId: string, content: string) => {
+    if (selectedListId) {
+      setNoteLists(noteLists.map(list => 
+        list.id === selectedListId 
+          ? {
+              ...list,
+              notes: list.notes.map(note =>
+                note.id === noteId 
+                  ? { ...note, content, updatedAt: new Date() }
+                  : note
+              ),
+              updatedAt: new Date()
+            }
+          : list
+      ));
+      
+      // Update the pip note as well
+      setPipNote(prev => prev ? { ...prev, content } : null);
+      
+      // Update editing note if it's the same note
+      if (editingNote && editingNote.id === noteId) {
+        setEditingNote(prev => prev ? { ...prev, content } : null);
+      }
+    }
+  }, [selectedListId, noteLists, setNoteLists, editingNote]);
+
+  // Picture-in-Picture functionality
+  const openNotePiP = useCallback(async (note: Note, mode: 'read' | 'edit' = 'read') => {
+    // Check if Document Picture-in-Picture API is available
+    const isPiPSupported = 'documentPictureInPicture' in window;
+    
+    if (!isPiPSupported) {
+      // Fallback to modal
+      setPipNote(note);
+      setPipMode(mode);
+      return;
+    }
+
+    try {
+      const pipWin = await window.documentPictureInPicture!.requestWindow({
+        width: 400,
+        height: 500,
+      });
+
+      // Create the HTML content for the PiP window
+      pipWin.document.head.innerHTML = `
+        <title>Note - Picture-in-Picture</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e1b4b, #7c3aed, #1e1b4b);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+          }
+          
+          .pip-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+          }
+          
+          .pip-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+          }
+          
+          .pip-textarea {
+            flex: 1;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            color: white;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            border-radius: 0;
+          }
+          
+          .pip-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+          }
+          
+          .pip-readonly {
+            flex: 1;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            word-wrap: break-word;
+          }
+          
+          .pip-status {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          .pip-mode-badge {
+            background: rgba(59, 130, 246, 0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+          }
+          
+          .pip-readonly-badge {
+            background: rgba(156, 163, 175, 0.3);
+            border-color: rgba(156, 163, 175, 0.5);
+          }
+        </style>
+      `;
+
+      const isEditable = mode === 'edit';
+      pipWin.document.body.innerHTML = `
+        <div class="pip-container">
+          <div class="pip-content">
+            ${isEditable ? 
+              `<textarea 
+                class="pip-textarea" 
+                placeholder="Start writing..."
+                id="pipTextarea"
+              >${note.content}</textarea>` :
+              `<div class="pip-readonly" id="pipContent">${note.content || 'This note is empty.'}</div>`
+            }
+          </div>
+          <div class="pip-status">
+            <div>
+              <span class="pip-mode-badge ${isEditable ? '' : 'pip-readonly-badge'}">
+                ${isEditable ? 'Edit Mode' : 'Read Mode'}
+              </span>
+            </div>
+            <div>Picture-in-Picture Mode</div>
+          </div>
+        </div>
+      `;
+
+      // Handle content changes in editable mode
+      if (isEditable) {
+        const textarea = pipWin.document.getElementById('pipTextarea') as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.addEventListener('input', (e) => {
+            const target = e.target as HTMLTextAreaElement;
+            handlePiPContentChange(note.id, target.value);
+          });
+        }
+      }
+
+      // Handle window close
+      pipWin.addEventListener('unload', () => {
+        // PiP window closed, nothing to clean up
+      });
+
+    } catch (error) {
+      console.error('Failed to create PiP window:', error);
+      // Fallback to modal
+      setPipNote(note);
+      setPipMode(mode);
+    }
+  }, [handlePiPContentChange, setPipNote, setPipMode]);
+
   // Filter notes based on search query
   const filteredNotes = useMemo(() => {
     if (!selectedList || !searchQuery.trim()) {
@@ -286,6 +492,12 @@ export default function NotesPage() {
               const searchInput = document.getElementById('search-input');
               if (searchInput) searchInput.focus();
             }, 100);
+            break;
+          case 'p':
+            e.preventDefault();
+            if (editingNote) {
+              openNotePiP(editingNote, 'edit');
+            }
             break;
         }
       }
@@ -365,6 +577,7 @@ export default function NotesPage() {
               <span>⌘+N New</span>
               <span>⌘+S Save</span>
               <span>⌘+F Search</span>
+              <span>⌘+P Edit PiP</span>
               <span>1-9 Switch Tab</span>
             </div>
           </div>
@@ -788,21 +1001,33 @@ You can use Markdown:
                   />
 
                   {/* Save and Cancel buttons - Bottom Right */}
-                  <div className="flex justify-end space-x-3">
+                  <div className="flex justify-between">
                     <button
-                      onClick={cancelEditing}
-                      className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                      title="Cancel editing (Esc)"
+                      onClick={() => openNotePiP(editingNote, 'edit')}
+                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                      title="Open in Picture-in-Picture edit mode (⌘+P)"
                     >
-                      Cancel
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      Edit in PiP
                     </button>
-                    <button
-                      onClick={() => saveNote(editingNote.id, editingNote.title, editingNote.content)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-                      title="Save note (⌘+S)"
-                    >
-                      Save
-                    </button>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={cancelEditing}
+                        className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                        title="Cancel editing (Esc)"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => saveNote(editingNote.id, editingNote.title, editingNote.content)}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                        title="Save note (⌘+S)"
+                      >
+                        Save
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : selectedNote ? (
@@ -896,13 +1121,23 @@ You can use Markdown:
         </ClientOnly>
 
         {/* Delete Topic Section */}
-        <div className="mt-30">
+        <div className="mt-8">
           <DeleteTopicSection selectedList={selectedList} onDeleteTopic={deleteList} />
         </div>
         
         <div className="pb-20"></div>
       </div>
       <Footer />
+
+      {/* Picture-in-Picture Modal */}
+      {pipNote && (
+        <NotePiPModal
+          note={pipNote}
+          onClose={closePiP}
+          onContentChange={handlePiPContentChange}
+          isEditable={pipMode === 'edit'}
+        />
+      )}
     </div>
   );
 } 

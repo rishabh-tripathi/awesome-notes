@@ -44,7 +44,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Research Hub</h1>
+                <h1 className="text-xl font-bold text-white">Algolint Hub</h1>
                 <p className="text-purple-200 text-xs">Productivity Suite</p>
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <div>
-                <p className="text-white font-semibold">Research Hub</p>
+                <p className="text-white font-semibold">Algolint Hub</p>
                 <p className="text-purple-200 text-sm">Productivity Suite</p>
               </div>
             </div>
@@ -223,7 +223,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-purple-300 text-sm">
-            <p>&copy; 2024 Research Hub. Crafted with ❤️ for productivity enthusiasts.</p>
+            <p>&copy; 2024 Algolint Hub. Crafted with ❤️ for productivity enthusiasts.</p>
           </div>
         </footer>
       </div>

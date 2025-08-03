@@ -300,7 +300,7 @@ export default function Footer() {
             {/* Center section with copyright and data export */}
             <div className="flex items-center space-x-4">
               <div className="text-xs text-purple-400/80">
-                © {new Date().getFullYear()} Research Hub. All rights reserved.
+                © {new Date().getFullYear()} Algolint Hub. All rights reserved.
               </div>
               
               {/* Data Import/Export */}
@@ -414,10 +414,11 @@ export default function Footer() {
         </div>
       </footer>
       
-      {/* Settings Modal */}
-      <Settings 
+            {/* Settings Modal */}
+      <Settings
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+        noteLists={noteLists}
       />
     </>
   );
