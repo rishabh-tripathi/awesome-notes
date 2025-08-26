@@ -9,7 +9,19 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function PWAInstaller() {
   useEffect(() => {
-    // Register service worker
+    // Unregister existing service workers to prevent caching during development
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+          console.log('SW unregistered: ', registration);
+        });
+      });
+    }
+
+    // Service worker registration disabled temporarily for development
+    // TODO: Re-enable after fixing diagram functionality
+    /*
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
@@ -19,6 +31,7 @@ export default function PWAInstaller() {
           console.log('SW registration failed: ', registrationError);
         });
     }
+    */
 
     // Handle PWA install prompt
     let deferredPrompt: BeforeInstallPromptEvent | null = null;

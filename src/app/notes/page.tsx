@@ -20,6 +20,9 @@ import ClientOnly from '@/components/ClientOnly';
 import Footer from '@/components/Footer';
 import DeleteTopicSection from '@/components/DeleteTopicSection';
 import NotePiPModal from '@/components/NotePiPModal';
+import DiagramEditor from '@/components/DiagramEditor';
+import DiagramViewer from '@/components/DiagramViewer';
+// import DiagramNoteEditor from '@/components/DiagramNoteEditor';
 
 
 export default function NotesPage() {
@@ -44,6 +47,9 @@ export default function NotesPage() {
   const [pipNote, setPipNote] = useState<Note | null>(null);
   const [pipMode, setPipMode] = useState<'read' | 'edit'>('read');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isCreatingDiagram, setIsCreatingDiagram] = useState(false);
+  const [editingDiagramNote, setEditingDiagramNote] = useState<Note | null>(null);
+  // const [editingDiagramDetails, setEditingDiagramDetails] = useState<Note | null>(null);
 
   // Handle client-side initialization to prevent hydration mismatch
   useEffect(() => {
@@ -179,6 +185,7 @@ export default function NotesPage() {
         id: Date.now().toString(),
         title: 'Untitled Note',
         content: '',
+        type: 'text',
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -190,6 +197,29 @@ export default function NotesPage() {
       ));
       setSelectedNoteId(newNote.id);
       setEditingNote(newNote);
+    }
+  }, [selectedListId, noteLists, setNoteLists]);
+
+  const createNewDiagramNote = useCallback(() => {
+    if (selectedListId) {
+      const newNote: Note = {
+        id: Date.now().toString(),
+        title: 'New Diagram',
+        content: '',
+        type: 'diagram',
+        diagramData: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      setNoteLists(noteLists.map(list => 
+        list.id === selectedListId 
+          ? { ...list, notes: [...list.notes, newNote], updatedAt: new Date() }
+          : list
+      ));
+      setSelectedNoteId(newNote.id);
+      setIsCreatingDiagram(true);
+      setEditingDiagramNote(newNote);
     }
   }, [selectedListId, noteLists, setNoteLists]);
 
@@ -248,6 +278,102 @@ export default function NotesPage() {
       ));
     }
   };
+
+  const saveDiagram = useCallback((noteId: string, diagramData: object, svgData: string) => {
+    console.log('Saving diagram for note:', noteId);
+    console.log('SVG data length:', svgData?.length || 0);
+    console.log('Diagram data:', diagramData);
+    
+    if (selectedListId) {
+      setNoteLists(noteLists.map(list => 
+        list.id === selectedListId 
+          ? {
+              ...list,
+              notes: list.notes.map(note =>
+                note.id === noteId 
+                  ? { 
+                      ...note, 
+                      diagramData, 
+                      content: svgData, // Store SVG as content for search purposes
+                      updatedAt: new Date() 
+                    }
+                  : note
+              ),
+              updatedAt: new Date()
+            }
+          : list
+      ));
+      setIsCreatingDiagram(false);
+      setEditingDiagramNote(null);
+      setLastSaved(new Date());
+      
+      // Select the saved note to show it
+      setSelectedNoteId(noteId);
+      console.log('Diagram saved and note selected');
+    } else {
+      console.error('No selected list ID');
+    }
+  }, [selectedListId, noteLists, setNoteLists]);
+
+  const cancelDiagram = useCallback(() => {
+    if (editingDiagramNote && !editingDiagramNote.diagramData) {
+      // Delete the note if it's new and hasn't been saved
+      if (selectedListId) {
+        setNoteLists(noteLists.map(list => 
+          list.id === selectedListId 
+            ? {
+                ...list,
+                notes: list.notes.filter(note => note.id !== editingDiagramNote.id),
+                updatedAt: new Date()
+              }
+            : list
+        ));
+        if (selectedNoteId === editingDiagramNote.id) {
+          setSelectedNoteId(null);
+        }
+      }
+    }
+    setIsCreatingDiagram(false);
+    setEditingDiagramNote(null);
+  }, [editingDiagramNote, selectedListId, noteLists, setNoteLists, selectedNoteId]);
+
+  const editDiagram = useCallback((note: Note) => {
+    setEditingDiagramNote(note);
+    setIsCreatingDiagram(true);
+  }, []);
+
+  // const editDiagramDetails = useCallback((note: Note) => {
+  //   setEditingDiagramDetails(note);
+  // }, []);
+
+  // const saveDiagramDetails = useCallback((noteId: string, title: string, textContent: string) => {
+  //   if (selectedListId) {
+  //     setNoteLists(noteLists.map(list => 
+  //       list.id === selectedListId 
+  //         ? {
+  //             ...list,
+  //             notes: list.notes.map(note =>
+  //               note.id === noteId 
+  //                 ? { 
+  //                     ...note, 
+  //                     title,
+  //                     textContent,
+  //                     updatedAt: new Date() 
+  //                   }
+  //                 : note
+  //             ),
+  //             updatedAt: new Date()
+  //           }
+  //         : list
+  //     ));
+  //     setEditingDiagramDetails(null);
+  //     setLastSaved(new Date());
+  //   }
+  // }, [selectedListId, noteLists, setNoteLists]);
+
+  // const cancelDiagramDetails = useCallback(() => {
+  //   setEditingDiagramDetails(null);
+  // }, []);
 
   const startEditing = (note: Note) => {
     setEditingNote({ ...note });
@@ -818,6 +944,15 @@ export default function NotesPage() {
                           </svg>
                         </button>
                         <button
+                          onClick={createNewDiagramNote}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-2 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                          title="Create new diagram"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                          </svg>
+                        </button>
+                        <button
                           onClick={createNewNote}
                           className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-2 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
                           title="Create new note (⌘+N)"
@@ -877,10 +1012,28 @@ export default function NotesPage() {
                               className="flex-1 min-w-0"
                               title="Single click to view, double click to edit"
                             >
-                              <p className="text-sm text-purple-200 line-clamp-3 mb-2">
-                                {note.content.slice(0, 150)}...
-                              </p>
-                              <p className="text-xs text-purple-300">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className={`text-xs px-2 py-1 rounded-full border ${
+                                  note.type === 'diagram' 
+                                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
+                                    : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                                }`}>
+                                  {note.type === 'diagram' ? 'Diagram' : 'Text'}
+                                </span>
+                                <h3 className="text-sm font-medium text-white truncate">
+                                  {note.title}
+                                </h3>
+                              </div>
+                              {note.type === 'diagram' ? (
+                                <p className="text-sm text-purple-200">
+                                  {note.diagramData ? 'Drawing created' : 'Empty diagram'}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-purple-200 line-clamp-3">
+                                  {note.content ? note.content.slice(0, 150) + '...' : 'Empty note'}
+                                </p>
+                              )}
+                              <p className="text-xs text-purple-300 mt-1">
                                 {mounted ? note.updatedAt.toLocaleDateString() : ''}
                               </p>
                             </div>
@@ -965,7 +1118,17 @@ export default function NotesPage() {
 
               {/* Note Editor */}
               <div className="lg:col-span-3">
-              {editingNote ? (
+              {/* {editingDiagramDetails ? (
+                <DiagramNoteEditor
+                  note={editingDiagramDetails}
+                  onSave={(title, textContent) => saveDiagramDetails(editingDiagramDetails.id, title, textContent)}
+                  onCancel={cancelDiagramDetails}
+                  onEditDiagram={() => {
+                    setEditingDiagramDetails(null);
+                    editDiagram(editingDiagramDetails);
+                  }}
+                />
+              ) : */ editingNote ? (
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
                   
 
@@ -1038,10 +1201,18 @@ You can use Markdown:
                         <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full border border-blue-500/30">
                           Read-only mode
                         </span>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${
+                          selectedNote.type === 'diagram' 
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
+                            : 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+                        }`}>
+                          {selectedNote.type === 'diagram' ? 'Diagram' : 'Text'}
+                        </span>
                         <span className="text-xs text-purple-300">
-                          Double-click note in list to edit
+                          {selectedNote.type === 'diagram' ? 'Click edit to modify diagram' : 'Double-click note in list to edit'}
                         </span>
                       </div>
+                      <h2 className="text-lg font-semibold text-white mb-1">{selectedNote.title}</h2>
                       <p className="text-sm text-purple-200">
                         Updated: {mounted ? selectedNote.updatedAt.toLocaleString() : ''}
                       </p>
@@ -1057,26 +1228,86 @@ You can use Markdown:
                         </svg>
                         Duplicate
                       </button>
-                      <button
-                        onClick={() => startEditing(selectedNote)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                        title="Edit this note"
-                      >
-                        <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit Note
-                      </button>
+                      {selectedNote.type === 'diagram' ? (
+                        <>
+                          {/* <button
+                            onClick={() => editDiagramDetails(selectedNote)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            title="Edit details"
+                          >
+                            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit Details
+                          </button> */}
+                          <button
+                            onClick={() => editDiagram(selectedNote)}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                            title="Edit diagram"
+                          >
+                            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                            Edit Diagram
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => startEditing(selectedNote)}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                          title="Edit this note"
+                        >
+                          <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit Note
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="prose dark:prose-invert max-w-none">
-                    <div 
-                      className="whitespace-pre-wrap text-white bg-white/5 rounded-lg p-4 border border-white/10 min-h-[200px]"
-                    >
-                      {selectedNote.content || <em className="text-gray-500">This note is empty. Click &quot;Edit Note&quot; to add content.</em>}
+                  {selectedNote.type === 'diagram' ? (
+                    <div className="space-y-4">
+                      {selectedNote.diagramData && selectedNote.content ? (
+                        <>
+                          <DiagramViewer 
+                            svgData={selectedNote.content}
+                            onEdit={() => editDiagram(selectedNote)}
+                            className="w-full"
+                          />
+                          {selectedNote.textContent && (
+                            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                              <h3 className="text-sm font-semibold text-white mb-2">Additional Notes</h3>
+                              <div className="whitespace-pre-wrap text-purple-200 text-sm">
+                                {selectedNote.textContent}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-12 bg-white/5 rounded-lg border border-white/10">
+                          <svg className="w-16 h-16 mx-auto text-purple-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                          </svg>
+                          <p className="text-purple-200 mb-4">This diagram is empty.</p>
+                          <button
+                            onClick={() => editDiagram(selectedNote)}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Start Drawing
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="prose dark:prose-invert max-w-none">
+                      <div 
+                        className="whitespace-pre-wrap text-white bg-white/5 rounded-lg p-4 border border-white/10 min-h-[200px]"
+                      >
+                        {selectedNote.content || <em className="text-gray-500">This note is empty. Click &quot;Edit Note&quot; to add content.</em>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : selectedList ? (
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 text-center">
@@ -1138,6 +1369,16 @@ You can use Markdown:
           isEditable={pipMode === 'edit'}
         />
       )}
+
+              {/* Fullscreen Diagram Editor */}
+        {isCreatingDiagram && editingDiagramNote && (
+          <DiagramEditor
+            initialData={editingDiagramNote.diagramData}
+            onSave={(diagramData, svgData) => saveDiagram(editingDiagramNote.id, diagramData, svgData)}
+            onCancel={cancelDiagram}
+            isFullscreen={true}
+          />
+        )}
     </div>
   );
 } 

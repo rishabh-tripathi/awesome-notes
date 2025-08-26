@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "@excalidraw/excalidraw/index.css";
 import ConditionalAuthWrapper from "@/components/ConditionalAuthWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import PWAInstaller from "@/components/PWAInstaller";

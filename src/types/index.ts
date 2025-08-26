@@ -26,6 +26,9 @@ export interface Note {
   id: string;
   title: string;
   content: string;
+  type?: 'text' | 'diagram';
+  diagramData?: object; // Excalidraw data
+  textContent?: string; // Additional text content for diagrams
   createdAt: Date;
   updatedAt: Date;
 }
